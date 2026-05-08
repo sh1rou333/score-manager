@@ -3,10 +3,12 @@
 #include <stdlib.h>
 
 #define MAX_TEXT_NUM 100    
-#define MAX_TEXT_LEN 256    
+#define MAX_TEXT_LEN 256 
+#define PAGE_SIZE 5
 
 char texts[MAX_TEXT_NUM][MAX_TEXT_LEN];
 int count = 0;             
+
 void menu() {
     printf("\n====== 文本管理系统 ======\n");
     printf("1. 添加文本\n");
@@ -14,17 +16,18 @@ void menu() {
     printf("3. 修改文本\n");
     printf("4. 查找文本\n");
     printf("5. 显示所有文本\n");
+    printf("6. 分页浏览文本\n");
     printf("0. 退出\n");
     printf("==========================\n");
     printf("请选择：");
 }
+
 void addText() {
     if (count >= MAX_TEXT_NUM) {
         printf("文本数量已达上限，无法添加！\n");
         return;
     }
     printf("请输入文本内容：");
-
     getchar();
     fgets(texts[count], MAX_TEXT_LEN, stdin);
     texts[count][strcspn(texts[count], "\n")] = '\0';
@@ -58,6 +61,7 @@ void deleteText() {
     count--;
     printf("删除成功！\n");
 }
+
 void modifyText() {
     if (count == 0) {
         printf("暂无文本可修改！\n");
@@ -86,6 +90,7 @@ void modifyText() {
 
     printf("修改成功！\n");
 }
+
 void searchText() {
     if (count == 0) {
         printf("暂无文本可查找！\n");
@@ -111,6 +116,42 @@ void searchText() {
         printf("未找到包含关键词的文本。\n");
     }
 }
+
+void browseText() {
+    if (count == 0) {
+        printf("暂无文本可浏览！\n");
+        return;
+    }
+
+    int page = 1;
+    int totalPages = (count + PAGE_SIZE - 1) / PAGE_SIZE;
+    char op;
+
+    while (1) {
+        int start = (page - 1) * PAGE_SIZE;
+        int end = start + PAGE_SIZE;
+        if (end > count) end = count;
+
+        printf("\n--- 第 %d / %d 页 ---\n", page, totalPages);
+        for (int i = start; i < end; i++) {
+            printf("%d. %s\n", i + 1, texts[i]);
+        }
+
+        printf("\n操作说明：[n]下一页  [p]上一页  [q]退出浏览\n请输入操作：");
+        scanf(" %c", &op);
+
+        if (op == 'q' || op == 'Q') {
+            break;
+        } else if ((op == 'n' || op == 'N') && page < totalPages) {
+            page++;
+        } else if ((op == 'p' || op == 'P') && page > 1) {
+            page--;
+        } else {
+            printf("无法执行该操作！\n");
+        }
+    }
+}
+
 void showAll() {
     if (count == 0) {
         printf("暂无文本！\n");
@@ -135,6 +176,7 @@ int main() {
             case 3: modifyText(); break;
             case 4: searchText(); break;
             case 5: showAll(); break;
+            case 6: browseText(); break;
             case 0:
                 printf("退出系统。\n");
                 return 0;
