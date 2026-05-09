@@ -1,184 +1,258 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
 
-#define MAX_TEXT_NUM 100    
-#define MAX_TEXT_LEN 256 
-#define PAGE_SIZE 5
+#define MAX_STACK_SIZE 100
+#define MAX_STR_LEN    256
+#define PAGE_SIZE      5
 
-char texts[MAX_TEXT_NUM][MAX_TEXT_LEN];
-int count = 0;             
+typedef struct {
+    char data[MAX_STACK_SIZE][MAX_STR_LEN];
+    int top;
+} StrStack;
+
+void InitStack(StrStack *s) {
+    s->top = -1;
+}
+
+int IsFull(StrStack *s) {
+    return s->top == MAX_STACK_SIZE - 1;
+}
+
+int IsEmpty(StrStack *s) {
+    return s->top == -1;
+}
+
+int MyStrLen(char *s) {
+    int len = 0;
+    while (s[len] != '\0')
+        len++;
+    return len;
+}
+
+void MyStrCpy(char *dest, char *src) {
+    int i = 0;
+    while (src[i] != '\0') {
+        dest[i] = src[i];
+        i++;
+    }
+    dest[i] = '\0';
+}
+
+void TrimNewLine(char *s) {
+    int len = MyStrLen(s);
+    if (len > 0 && s[len - 1] == '\n') {
+        s[len - 1] = '\0';
+    }
+}
+
+int MyStrStr(char *text, char *key) {
+    int tLen = MyStrLen(text);
+    int kLen = MyStrLen(key);
+    if (kLen == 0 || kLen > tLen)
+        return 0;
+
+    for (int i = 0; i <= tLen - kLen; i++) {
+        int j;
+        for (j = 0; j < kLen; j++) {
+            if (text[i + j] != key[j])
+                break;
+        }
+        if (j == kLen)
+            return 1;
+    }
+    return 0;
+}
+
+int Push(StrStack *s, char *str) {
+    if (IsFull(s)) return 0;
+    s->top++;
+    MyStrCpy(s->data[s->top], str);
+    return 1;
+}
+
+int Pop(StrStack *s, char *str) {
+    if (IsEmpty(s)) return 0;
+    MyStrCpy(str, s->data[s->top]);
+    s->top--;
+    return 1;
+}
+
+int GetSize(StrStack *s) {
+    return s->top + 1;
+}
 
 void menu() {
-    printf("\n====== 文本管理系统 ======\n");
+    printf("\n==== 无库函数 栈版文本管理 ====\n");
     printf("1. 添加文本\n");
     printf("2. 删除文本\n");
     printf("3. 修改文本\n");
     printf("4. 查找文本\n");
-    printf("5. 显示所有文本\n");
-    printf("6. 分页浏览文本\n");
+    printf("5. 分页浏览文本\n");
+    printf("6. 显示所有文本\n");
     printf("0. 退出\n");
-    printf("==========================\n");
+    printf("==============================\n");
     printf("请选择：");
 }
 
-void addText() {
-    if (count >= MAX_TEXT_NUM) {
-        printf("文本数量已达上限，无法添加！\n");
+void addText(StrStack *s) {
+    if (IsFull(s)) {
+        printf("文本栈已满，无法添加！\n");
         return;
     }
-    printf("请输入文本内容：");
+    char buf[MAX_STR_LEN];
     getchar();
-    fgets(texts[count], MAX_TEXT_LEN, stdin);
-    texts[count][strcspn(texts[count], "\n")] = '\0';
-    count++;
+    printf("请输入文本内容：");
+    fgets(buf, MAX_STR_LEN, stdin);
+    TrimNewLine(buf);
+    Push(s, buf);
     printf("添加成功！\n");
 }
 
-void deleteText() {
-    if (count == 0) {
+void deleteText(StrStack *s) {
+    if (IsEmpty(s)) {
         printf("暂无文本可删除！\n");
         return;
     }
-
-    int i, index;
+    int size = GetSize(s);
     printf("\n当前文本列表：\n");
-    for (i = 0; i < count; i++) {
-        printf("%d. %s\n", i + 1, texts[i]);
+    for (int i = 0; i < size; i++) {
+        printf("%d. %s\n", i + 1, s->data[i]);
     }
 
+    int idx;
     printf("请输入要删除的序号：");
-    scanf("%d", &index);
-    index--;
-
-    if (index < 0 || index >= count) {
+    scanf("%d", &idx);
+    idx--;
+    if (idx < 0 || idx >= size) {
         printf("序号无效！\n");
         return;
     }
-    for (i = index; i < count - 1; i++) {
-        strcpy(texts[i], texts[i + 1]);
+
+    StrStack temp;
+    InitStack(&temp);
+    for (int i = size - 1; i > idx; i--) {
+        Push(&temp, s->data[i]);
     }
-    count--;
+    s->top = idx - 1;
+    char t[MAX_STR_LEN];
+    while (!IsEmpty(&temp)) {
+        Pop(&temp, t);
+        Push(s, t);
+    }
     printf("删除成功！\n");
 }
 
-void modifyText() {
-    if (count == 0) {
+void modifyText(StrStack *s) {
+    if (IsEmpty(s)) {
         printf("暂无文本可修改！\n");
         return;
     }
-
-    int i, index;
+    int size = GetSize(s);
     printf("\n当前文本列表：\n");
-    for (i = 0; i < count; i++) {
-        printf("%d. %s\n", i + 1, texts[i]);
+    for (int i = 0; i < size; i++) {
+        printf("%d. %s\n", i + 1, s->data[i]);
     }
 
-    printf("请输入要修改的文本序号：");
-    scanf("%d", &index);
-    index--;
-
-    if (index < 0 || index >= count) {
+    int idx;
+    printf("请输入要修改的序号：");
+    scanf("%d", &idx);
+    idx--;
+    if (idx < 0 || idx >= size) {
         printf("序号无效！\n");
         return;
     }
-
     getchar();
-    printf("请输入新的文本内容：");
-    fgets(texts[index], MAX_TEXT_LEN, stdin);
-    texts[index][strcspn(texts[index], "\n")] = '\0';
-
+    char buf[MAX_STR_LEN];
+    printf("请输入新内容：");
+    fgets(buf, MAX_STR_LEN, stdin);
+    TrimNewLine(buf);
+    MyStrCpy(s->data[idx], buf);
     printf("修改成功！\n");
 }
 
-void searchText() {
-    if (count == 0) {
+void searchText(StrStack *s) {
+    if (IsEmpty(s)) {
         printf("暂无文本可查找！\n");
         return;
     }
-
-    char key[MAX_TEXT_LEN];
-    printf("请输入查找关键词：");
+    char key[MAX_STR_LEN];
     getchar();
-    fgets(key, MAX_TEXT_LEN, stdin);
-    key[strcspn(key, "\n")] = '\0';
+    printf("请输入查找关键词：");
+    fgets(key, MAX_STR_LEN, stdin);
+    TrimNewLine(key);
 
-    int found = 0;
+    int find = 0;
+    int size = GetSize(s);
     printf("\n查找结果：\n");
-    for (int i = 0; i < count; i++) {
-        if (strstr(texts[i], key) != NULL) {
-            printf("- %s\n", texts[i]);
-            found = 1;
+    for (int i = 0; i < size; i++) {
+        if (MyStrStr(s->data[i], key)) {
+            printf("- %s\n", s->data[i]);
+            find = 1;
         }
     }
-
-    if (!found) {
-        printf("未找到包含关键词的文本。\n");
+    if (!find) {
+        printf("未找到匹配文本！\n");
     }
 }
 
-void browseText() {
-    if (count == 0) {
-        printf("暂无文本可浏览！\n");
+void browseText(StrStack *s) {
+    if (IsEmpty(s)) {
+        printf("暂无文本！\n");
         return;
     }
-
+    int size = GetSize(s);
     int page = 1;
-    int totalPages = (count + PAGE_SIZE - 1) / PAGE_SIZE;
+    int totalPage = (size + PAGE_SIZE - 1) / PAGE_SIZE;
     char op;
 
     while (1) {
         int start = (page - 1) * PAGE_SIZE;
         int end = start + PAGE_SIZE;
-        if (end > count) end = count;
+        if (end > size) end = size;
 
-        printf("\n--- 第 %d / %d 页 ---\n", page, totalPages);
+        printf("\n--- 第 %d / %d 页 ---\n", page, totalPage);
         for (int i = start; i < end; i++) {
-            printf("%d. %s\n", i + 1, texts[i]);
+            printf("%d. %s\n", i + 1, s->data[i]);
         }
 
-        printf("\n操作说明：[n]下一页  [p]上一页  [q]退出浏览\n请输入操作：");
+        printf("[n]下一页 [p]上一页 [q]退出：");
         scanf(" %c", &op);
-
-        if (op == 'q' || op == 'Q') {
-            break;
-        } else if ((op == 'n' || op == 'N') && page < totalPages) {
-            page++;
-        } else if ((op == 'p' || op == 'P') && page > 1) {
-            page--;
-        } else {
-            printf("无法执行该操作！\n");
-        }
+        if (op == 'q' || op == 'Q') break;
+        if ((op == 'n' || op == 'N') && page < totalPage) page++;
+        else if ((op == 'p' || op == 'P') && page > 1) page--;
+        else printf("无法操作！\n");
     }
 }
 
-void showAll() {
-    if (count == 0) {
+void showAll(StrStack *s) {
+    if (IsEmpty(s)) {
         printf("暂无文本！\n");
         return;
     }
-
+    int size = GetSize(s);
     printf("\n所有文本：\n");
-    for (int i = 0; i < count; i++) {
-        printf("%d. %s\n", i + 1, texts[i]);
+    for (int i = 0; i < size; i++) {
+        printf("%d. %s\n", i + 1, s->data[i]);
     }
 }
 
 int main() {
+    StrStack st;
+    InitStack(&st);
     int choice;
+
     while (1) {
         menu();
         scanf("%d", &choice);
-
         switch (choice) {
-            case 1: addText(); break;
-            case 2: deleteText(); break;
-            case 3: modifyText(); break;
-            case 4: searchText(); break;
-            case 5: showAll(); break;
-            case 6: browseText(); break;
+            case 1: addText(&st); break;
+            case 2: deleteText(&st); break;
+            case 3: modifyText(&st); break;
+            case 4: searchText(&st); break;
+            case 5: browseText(&st); break;
+            case 6: showAll(&st); break;
             case 0:
-                printf("退出系统。\n");
+                printf("退出系统\n");
                 return 0;
             default:
                 printf("输入错误，请重新选择！\n");
