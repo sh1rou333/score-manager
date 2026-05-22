@@ -9,8 +9,6 @@ typedef struct {
     char data[MAX_STACK_SIZE][MAX_STR_LEN];
     int top;
 } StrStack;
-
-/* ---------- 自定义字符串函数（添加const限定符，消除C++警告） ---------- */
 int MyStrLen(const char *s) {
     int len = 0;
     while (s[len] != '\0') len++;
@@ -65,8 +63,6 @@ int MyStrStr(const char *text, const char *key) {
     }
     return 0;
 }
-
-/* 修复：只提取以'['开头的标签前缀，避免格式错误 */
 void GetTagPrefix(const char *src, char *prefix) {
     if (src[0] != '[') {
         prefix[0] = '\0';
@@ -80,20 +76,16 @@ void GetTagPrefix(const char *src, char *prefix) {
     if (src[i] == ']') {
         prefix[i] = ']';
         i++;
-        if (src[i] == ' ') { // 保留原有的空格分隔符
+        if (src[i] == ' ') { 
             prefix[i] = ' ';
             i++;
         }
     }
     prefix[i] = '\0';
 }
-
-/* ---------- 栈操作 ---------- */
 void InitStack(StrStack *s) { s->top = -1; }
 int IsFull(StrStack *s)  { return s->top == MAX_STACK_SIZE - 1; }
 int IsEmpty(StrStack *s) { return s->top == -1; }
-
-// 添加const限定符，支持字符串常量入栈
 int Push(StrStack *s, const char *str) {
     if (IsFull(s)) return 0;
     s->top++;
@@ -107,10 +99,7 @@ int Pop(StrStack *s, char *str) {
     s->top--;
     return 1;
 }
-
 int GetSize(StrStack *s) { return s->top + 1; }
-
-/* 复制栈 */
 void CopyStack(StrStack *dest, StrStack *src) {
     InitStack(dest);
     for (int i = 0; i <= src->top; i++) {
@@ -118,8 +107,6 @@ void CopyStack(StrStack *dest, StrStack *src) {
     }
     dest->top = src->top;
 }
-
-/* 按时间标签排序（升序） */
 void SortStackByTag(StrStack *s) {
     int size = GetSize(s);
     char tag1[MAX_STR_LEN], tag2[MAX_STR_LEN], temp[MAX_STR_LEN];
@@ -135,14 +122,10 @@ void SortStackByTag(StrStack *s) {
         }
     }
 }
-
-/* 清除输入缓冲区直到换行（修复残留字符问题） */
 void ClearInputBuffer() {
     int c;
     while ((c = getchar()) != '\n' && c != EOF) {}
 }
-
-/* ---------- 菜单与功能函数 ---------- */
 void menu() {
     printf("\n==== 无库函数 栈版文本管理(手动时间标签) ====\n");
     printf("1. 添加文本(含时间标签)\n");
@@ -156,8 +139,6 @@ void menu() {
     printf("============================================\n");
     printf("请选择：");
 }
-
-/* 修复：删除多余的ClearInputBuffer，解决输入阻塞；添加标签格式检查 */
 void addText(StrStack *s) {
     if (IsFull(s)) {
         printf("文本栈已满，无法添加！\n");
@@ -167,15 +148,11 @@ void addText(StrStack *s) {
     char tag[20], content[MAX_STR_LEN], full[MAX_STR_LEN];
     printf("请输入时间标签(如2026-05-22)：");
     fgets(tag, 20, stdin);
-    
-    // 处理标签超长输入，清理缓冲区残留
     if (tag[MyStrLen(tag) - 1] != '\n') {
         ClearInputBuffer();
     } else {
         TrimNewLine(tag);
     }
-
-    // 新增：禁止标签包含']'，避免后续格式解析错误
     if (MyStrStr(tag, "]")) {
         printf("错误：时间标签不能包含']'字符！\n");
         return;
@@ -200,8 +177,6 @@ void addText(StrStack *s) {
     } else {
         TrimNewLine(content);
     }
-
-    // 安全拼接完整文本
     full[0] = '[';
     full[1] = '\0';
     MyStrCat(full, tag);
@@ -210,8 +185,6 @@ void addText(StrStack *s) {
     Push(s, full);
     printf("添加成功！\n");
 }
-
-/* 删除文本 */
 void deleteText(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本可删除！\n");
@@ -246,8 +219,6 @@ void deleteText(StrStack *s) {
     }
     printf("删除成功！\n");
 }
-
-/* 修改文本（保留原标签） */
 void modifyText(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本可修改！\n");
@@ -292,8 +263,6 @@ void modifyText(StrStack *s) {
     MyStrCat(s->data[idx], newContent);
     printf("修改成功！\n");
 }
-
-/* 修复：删除多余的ClearInputBuffer，解决输入阻塞 */
 void searchText(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本可查找！\n");
@@ -315,8 +284,6 @@ void searchText(StrStack *s) {
     }
     if (!find) printf("未找到匹配文本！\n");
 }
-
-/* 分页浏览（原顺序） */
 void browseText(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本！\n");
@@ -346,8 +313,6 @@ void browseText(StrStack *s) {
         else printf("无法操作！\n");
     }
 }
-
-/* 显示所有文本 */
 void showAll(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本！\n");
@@ -359,8 +324,6 @@ void showAll(StrStack *s) {
         printf("%d. %s\n", i + 1, s->data[i]);
     }
 }
-
-/* 按时间分类显示 */
 void showByTime(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本！\n");
@@ -371,8 +334,6 @@ void showByTime(StrStack *s) {
     SortStackByTag(&sorted);
     browseText(&sorted);
 }
-
-/* ---------- 主程序 ---------- */
 int main() {
     StrStack st;
     InitStack(&st);
@@ -381,7 +342,7 @@ int main() {
     while (1) {
         menu();
         scanf("%d", &choice);
-        ClearInputBuffer(); // 统一清理菜单输入后的残留
+        ClearInputBuffer(); 
         switch (choice) {
             case 1: addText(&st); break;
             case 2: deleteText(&st); break;
