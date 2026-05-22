@@ -10,114 +10,208 @@ typedef struct {
     int top;
 } StrStack;
 
-void InitStack(StrStack *s) {
-    s->top = -1;
-}
-
-int IsFull(StrStack *s) {
-    return s->top == MAX_STACK_SIZE - 1;
-}
-
-int IsEmpty(StrStack *s) {
-    return s->top == -1;
-}
-
-int MyStrLen(char *s) {
+/* ---------- 自定义字符串函数（添加const限定符，消除C++警告） ---------- */
+int MyStrLen(const char *s) {
     int len = 0;
-    while (s[len] != '\0')
-        len++;
+    while (s[len] != '\0') len++;
     return len;
 }
 
-// 带长度限制的安全字符串拷贝，防止越界
-void MyStrCpy(char *dest, char *src, int maxLen) {
+void MyStrCpy(char *dest, const char *src) {
     int i = 0;
-    while (src[i] != '\0' && i < maxLen - 1) {
+    while (src[i] != '\0') {
         dest[i] = src[i];
         i++;
     }
     dest[i] = '\0';
 }
 
-// 清空输入缓冲区
-void CleanBuffer()
-{
-    char ch;
-    while ((ch = getchar()) != '\n' && ch != EOF);
+void MyStrCat(char *dest, const char *src) {
+    int i = MyStrLen(dest);
+    int j = 0;
+    while (src[j] != '\0') {
+        dest[i++] = src[j++];
+    }
+    dest[i] = '\0';
 }
 
-// 去除末尾换行符，增加空串防护
+int MyStrCmp(const char *s1, const char *s2) {
+    int i = 0;
+    while (s1[i] != '\0' && s2[i] != '\0') {
+        if (s1[i] < s2[i]) return -1;
+        if (s1[i] > s2[i]) return 1;
+        i++;
+    }
+    if (s1[i] == '\0' && s2[i] == '\0') return 0;
+    return s1[i] == '\0' ? -1 : 1;
+}
+
 void TrimNewLine(char *s) {
     int len = MyStrLen(s);
-    if (len <= 0) return;
-    if (s[len - 1] == '\n') {
+    if (len > 0 && s[len - 1] == '\n')
         s[len - 1] = '\0';
-    }
 }
 
-int MyStrStr(char *text, char *key) {
+int MyStrStr(const char *text, const char *key) {
     int tLen = MyStrLen(text);
     int kLen = MyStrLen(key);
-    if (kLen == 0 || kLen > tLen)
-        return 0;
-
+    if (kLen == 0 || kLen > tLen) return 0;
     for (int i = 0; i <= tLen - kLen; i++) {
         int j;
         for (j = 0; j < kLen; j++) {
-            if (text[i + j] != key[j])
-                break;
+            if (text[i + j] != key[j]) break;
         }
-        if (j == kLen)
-            return 1;
+        if (j == kLen) return 1;
     }
     return 0;
 }
 
-int Push(StrStack *s, char *str) {
+/* 修复：只提取以'['开头的标签前缀，避免格式错误 */
+void GetTagPrefix(const char *src, char *prefix) {
+    if (src[0] != '[') {
+        prefix[0] = '\0';
+        return;
+    }
+    int i = 0;
+    while (src[i] != '\0' && src[i] != ']') {
+        prefix[i] = src[i];
+        i++;
+    }
+    if (src[i] == ']') {
+        prefix[i] = ']';
+        i++;
+        if (src[i] == ' ') { // 保留原有的空格分隔符
+            prefix[i] = ' ';
+            i++;
+        }
+    }
+    prefix[i] = '\0';
+}
+
+/* ---------- 栈操作 ---------- */
+void InitStack(StrStack *s) { s->top = -1; }
+int IsFull(StrStack *s)  { return s->top == MAX_STACK_SIZE - 1; }
+int IsEmpty(StrStack *s) { return s->top == -1; }
+
+// 添加const限定符，支持字符串常量入栈
+int Push(StrStack *s, const char *str) {
     if (IsFull(s)) return 0;
     s->top++;
-    MyStrCpy(s->data[s->top], str, MAX_STR_LEN);
+    MyStrCpy(s->data[s->top], str);
     return 1;
 }
 
 int Pop(StrStack *s, char *str) {
     if (IsEmpty(s)) return 0;
-    MyStrCpy(str, s->data[s->top], MAX_STR_LEN);
+    MyStrCpy(str, s->data[s->top]);
     s->top--;
     return 1;
 }
 
-int GetSize(StrStack *s) {
-    return s->top + 1;
+int GetSize(StrStack *s) { return s->top + 1; }
+
+/* 复制栈 */
+void CopyStack(StrStack *dest, StrStack *src) {
+    InitStack(dest);
+    for (int i = 0; i <= src->top; i++) {
+        MyStrCpy(dest->data[i], src->data[i]);
+    }
+    dest->top = src->top;
 }
 
+/* 按时间标签排序（升序） */
+void SortStackByTag(StrStack *s) {
+    int size = GetSize(s);
+    char tag1[MAX_STR_LEN], tag2[MAX_STR_LEN], temp[MAX_STR_LEN];
+    for (int i = 0; i < size - 1; i++) {
+        for (int j = 0; j < size - 1 - i; j++) {
+            GetTagPrefix(s->data[j], tag1);
+            GetTagPrefix(s->data[j + 1], tag2);
+            if (MyStrCmp(tag1, tag2) > 0) {
+                MyStrCpy(temp, s->data[j]);
+                MyStrCpy(s->data[j], s->data[j + 1]);
+                MyStrCpy(s->data[j + 1], temp);
+            }
+        }
+    }
+}
+
+/* 清除输入缓冲区直到换行（修复残留字符问题） */
+void ClearInputBuffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) {}
+}
+
+/* ---------- 菜单与功能函数 ---------- */
 void menu() {
-    printf("\n==== 无库函数 栈版文本管理 ====\n");
-    printf("1. 添加文本\n");
+    printf("\n==== 无库函数 栈版文本管理(手动时间标签) ====\n");
+    printf("1. 添加文本(含时间标签)\n");
     printf("2. 删除文本\n");
     printf("3. 修改文本\n");
     printf("4. 查找文本\n");
     printf("5. 分页浏览文本\n");
     printf("6. 显示所有文本\n");
+    printf("7. 按时间分类显示\n");
     printf("0. 退出\n");
-    printf("==============================\n");
+    printf("============================================\n");
     printf("请选择：");
 }
 
+/* 修复：删除多余的ClearInputBuffer，解决输入阻塞；添加标签格式检查 */
 void addText(StrStack *s) {
     if (IsFull(s)) {
         printf("文本栈已满，无法添加！\n");
         return;
     }
-    char buf[MAX_STR_LEN];
-    CleanBuffer();
-    printf("请输入文本内容：");
-    fgets(buf, MAX_STR_LEN, stdin);
-    TrimNewLine(buf);
-    Push(s, buf);
+
+    char tag[20], content[MAX_STR_LEN], full[MAX_STR_LEN];
+    printf("请输入时间标签(如2026-05-22)：");
+    fgets(tag, 20, stdin);
+    
+    // 处理标签超长输入，清理缓冲区残留
+    if (tag[MyStrLen(tag) - 1] != '\n') {
+        ClearInputBuffer();
+    } else {
+        TrimNewLine(tag);
+    }
+
+    // 新增：禁止标签包含']'，避免后续格式解析错误
+    if (MyStrStr(tag, "]")) {
+        printf("错误：时间标签不能包含']'字符！\n");
+        return;
+    }
+
+    int tagLen = MyStrLen(tag);
+    if (tagLen > 18) {
+        printf("错误：时间标签过长，请控制在18个字符以内！\n");
+        return;
+    }
+
+    int maxContentLen = MAX_STR_LEN - tagLen - 4;
+    if (maxContentLen <= 0) {
+        printf("错误：时间标签太长，无法添加内容！\n");
+        return;
+    }
+
+    printf("请输入文本内容（最长%d个字符）：", maxContentLen);
+    fgets(content, maxContentLen, stdin);
+    if (content[MyStrLen(content) - 1] != '\n') {
+        ClearInputBuffer();
+    } else {
+        TrimNewLine(content);
+    }
+
+    // 安全拼接完整文本
+    full[0] = '[';
+    full[1] = '\0';
+    MyStrCat(full, tag);
+    MyStrCat(full, "] ");
+    MyStrCat(full, content);
+    Push(s, full);
     printf("添加成功！\n");
 }
 
+/* 删除文本 */
 void deleteText(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本可删除！\n");
@@ -132,6 +226,7 @@ void deleteText(StrStack *s) {
     int idx;
     printf("请输入要删除的序号：");
     scanf("%d", &idx);
+    ClearInputBuffer();
     idx--;
     if (idx < 0 || idx >= size) {
         printf("序号无效！\n");
@@ -152,6 +247,7 @@ void deleteText(StrStack *s) {
     printf("删除成功！\n");
 }
 
+/* 修改文本（保留原标签） */
 void modifyText(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本可修改！\n");
@@ -166,27 +262,44 @@ void modifyText(StrStack *s) {
     int idx;
     printf("请输入要修改的序号：");
     scanf("%d", &idx);
+    ClearInputBuffer();
     idx--;
     if (idx < 0 || idx >= size) {
         printf("序号无效！\n");
         return;
     }
-    CleanBuffer();
-    char buf[MAX_STR_LEN];
-    printf("请输入新内容：");
-    fgets(buf, MAX_STR_LEN, stdin);
-    TrimNewLine(buf);
-    MyStrCpy(s->data[idx], buf, MAX_STR_LEN);
+
+    char tagPrefix[30];
+    GetTagPrefix(s->data[idx], tagPrefix);
+    int tagPrefixLen = MyStrLen(tagPrefix);
+
+    int maxContentLen = MAX_STR_LEN - tagPrefixLen - 1;
+    if (maxContentLen <= 0) {
+        printf("原标签太长，无法修改！\n");
+        return;
+    }
+
+    char newContent[MAX_STR_LEN];
+    printf("请输入新内容（最长%d个字符）：", maxContentLen);
+    fgets(newContent, maxContentLen, stdin);
+    if (newContent[MyStrLen(newContent) - 1] != '\n') {
+        ClearInputBuffer();
+    } else {
+        TrimNewLine(newContent);
+    }
+
+    MyStrCpy(s->data[idx], tagPrefix);
+    MyStrCat(s->data[idx], newContent);
     printf("修改成功！\n");
 }
 
+/* 修复：删除多余的ClearInputBuffer，解决输入阻塞 */
 void searchText(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本可查找！\n");
         return;
     }
     char key[MAX_STR_LEN];
-    CleanBuffer();
     printf("请输入查找关键词：");
     fgets(key, MAX_STR_LEN, stdin);
     TrimNewLine(key);
@@ -200,11 +313,10 @@ void searchText(StrStack *s) {
             find = 1;
         }
     }
-    if (!find) {
-        printf("未找到匹配文本！\n");
-    }
+    if (!find) printf("未找到匹配文本！\n");
 }
 
+/* 分页浏览（原顺序） */
 void browseText(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本！\n");
@@ -227,29 +339,15 @@ void browseText(StrStack *s) {
 
         printf("[n]下一页 [p]上一页 [q]退出：");
         scanf(" %c", &op);
+        ClearInputBuffer();
         if (op == 'q' || op == 'Q') break;
-
-        if (op == 'n' || op == 'N')
-        {
-            if (page < totalPage)
-                page++;
-            else
-                printf("已经是最后一页，无法翻页\n");
-        }
-        else if (op == 'p' || op == 'P')
-        {
-            if (page > 1)
-                page--;
-            else
-                printf("已经是第一页，无法翻页\n");
-        }
-        else
-        {
-            printf("输入指令无效，请重新操作\n");
-        }
+        if ((op == 'n' || op == 'N') && page < totalPage) page++;
+        else if ((op == 'p' || op == 'P') && page > 1) page--;
+        else printf("无法操作！\n");
     }
 }
 
+/* 显示所有文本 */
 void showAll(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本！\n");
@@ -262,6 +360,19 @@ void showAll(StrStack *s) {
     }
 }
 
+/* 按时间分类显示 */
+void showByTime(StrStack *s) {
+    if (IsEmpty(s)) {
+        printf("暂无文本！\n");
+        return;
+    }
+    StrStack sorted;
+    CopyStack(&sorted, s);
+    SortStackByTag(&sorted);
+    browseText(&sorted);
+}
+
+/* ---------- 主程序 ---------- */
 int main() {
     StrStack st;
     InitStack(&st);
@@ -270,6 +381,7 @@ int main() {
     while (1) {
         menu();
         scanf("%d", &choice);
+        ClearInputBuffer(); // 统一清理菜单输入后的残留
         switch (choice) {
             case 1: addText(&st); break;
             case 2: deleteText(&st); break;
@@ -277,13 +389,12 @@ int main() {
             case 4: searchText(&st); break;
             case 5: browseText(&st); break;
             case 6: showAll(&st); break;
+            case 7: showByTime(&st); break;
             case 0:
                 printf("退出系统\n");
                 return 0;
             default:
                 printf("输入错误，请重新选择！\n");
-                CleanBuffer();
-                break;
         }
     }
     return 0;
