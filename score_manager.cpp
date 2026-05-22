@@ -29,18 +29,28 @@ int MyStrLen(char *s) {
     return len;
 }
 
-void MyStrCpy(char *dest, char *src) {
+// 带长度限制的安全字符串拷贝，防止越界
+void MyStrCpy(char *dest, char *src, int maxLen) {
     int i = 0;
-    while (src[i] != '\0') {
+    while (src[i] != '\0' && i < maxLen - 1) {
         dest[i] = src[i];
         i++;
     }
     dest[i] = '\0';
 }
 
+// 清空输入缓冲区
+void CleanBuffer()
+{
+    char ch;
+    while ((ch = getchar()) != '\n' && ch != EOF);
+}
+
+// 去除末尾换行符，增加空串防护
 void TrimNewLine(char *s) {
     int len = MyStrLen(s);
-    if (len > 0 && s[len - 1] == '\n') {
+    if (len <= 0) return;
+    if (s[len - 1] == '\n') {
         s[len - 1] = '\0';
     }
 }
@@ -66,13 +76,13 @@ int MyStrStr(char *text, char *key) {
 int Push(StrStack *s, char *str) {
     if (IsFull(s)) return 0;
     s->top++;
-    MyStrCpy(s->data[s->top], str);
+    MyStrCpy(s->data[s->top], str, MAX_STR_LEN);
     return 1;
 }
 
 int Pop(StrStack *s, char *str) {
     if (IsEmpty(s)) return 0;
-    MyStrCpy(str, s->data[s->top]);
+    MyStrCpy(str, s->data[s->top], MAX_STR_LEN);
     s->top--;
     return 1;
 }
@@ -100,7 +110,7 @@ void addText(StrStack *s) {
         return;
     }
     char buf[MAX_STR_LEN];
-    getchar();
+    CleanBuffer();
     printf("请输入文本内容：");
     fgets(buf, MAX_STR_LEN, stdin);
     TrimNewLine(buf);
@@ -161,12 +171,12 @@ void modifyText(StrStack *s) {
         printf("序号无效！\n");
         return;
     }
-    getchar();
+    CleanBuffer();
     char buf[MAX_STR_LEN];
     printf("请输入新内容：");
     fgets(buf, MAX_STR_LEN, stdin);
     TrimNewLine(buf);
-    MyStrCpy(s->data[idx], buf);
+    MyStrCpy(s->data[idx], buf, MAX_STR_LEN);
     printf("修改成功！\n");
 }
 
@@ -176,7 +186,7 @@ void searchText(StrStack *s) {
         return;
     }
     char key[MAX_STR_LEN];
-    getchar();
+    CleanBuffer();
     printf("请输入查找关键词：");
     fgets(key, MAX_STR_LEN, stdin);
     TrimNewLine(key);
@@ -218,9 +228,25 @@ void browseText(StrStack *s) {
         printf("[n]下一页 [p]上一页 [q]退出：");
         scanf(" %c", &op);
         if (op == 'q' || op == 'Q') break;
-        if ((op == 'n' || op == 'N') && page < totalPage) page++;
-        else if ((op == 'p' || op == 'P') && page > 1) page--;
-        else printf("无法操作！\n");
+
+        if (op == 'n' || op == 'N')
+        {
+            if (page < totalPage)
+                page++;
+            else
+                printf("已经是最后一页，无法翻页\n");
+        }
+        else if (op == 'p' || op == 'P')
+        {
+            if (page > 1)
+                page--;
+            else
+                printf("已经是第一页，无法翻页\n");
+        }
+        else
+        {
+            printf("输入指令无效，请重新操作\n");
+        }
     }
 }
 
@@ -256,6 +282,8 @@ int main() {
                 return 0;
             default:
                 printf("输入错误，请重新选择！\n");
+                CleanBuffer();
+                break;
         }
     }
     return 0;
