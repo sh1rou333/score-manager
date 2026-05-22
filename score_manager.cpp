@@ -127,7 +127,7 @@ void ClearInputBuffer() {
     while ((c = getchar()) != '\n' && c != EOF) {}
 }
 void menu() {
-    printf("\n==== 无库函数 栈版文本管理(手动时间标签) ====\n");
+    printf("\n手动时间标签\n");
     printf("1. 添加文本(含时间标签)\n");
     printf("2. 删除文本\n");
     printf("3. 修改文本\n");
