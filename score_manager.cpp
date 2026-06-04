@@ -467,7 +467,7 @@ int main(void) {
             case 5: browseText(&st); break;
             case 6: showAll(&st); break;
             case 7: showByTime(&st); break;
-            case 8: showTreeByDate(&st); break;//新增功能
+            case 8: showTreeByDate(&st); break;
             case 0:
                 printf("退出系统\n");
                 return 0;
