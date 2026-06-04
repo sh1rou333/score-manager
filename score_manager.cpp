@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define MAX_STACK_SIZE 100
 #define MAX_STR_LEN    256
@@ -9,6 +10,13 @@ typedef struct {
     char data[MAX_STACK_SIZE][MAX_STR_LEN];
     int top;
 } StrStack;
+
+typedef struct {
+    int year;
+    int month;
+    int day;
+    char contentOnly[MAX_STR_LEN];
+} DateItem;
 
 int MyStrLen(const char *s) {
     int len = 0;
@@ -78,7 +86,7 @@ void GetTagPrefix(const char *src, char *prefix) {
     if (src[i] == ']') {
         prefix[i] = ']';
         i++;
-        if (src[i] == ' ') { 
+        if (src[i] == ' ') {
             prefix[i] = ' ';
             i++;
         }
@@ -125,12 +133,12 @@ void SortStackByTag(StrStack *s) {
         }
     }
 }
-void ClearInputBuffer() {
+void ClearInputBuffer(void) {
     int c;
     while ((c = getchar()) != '\n' && c != EOF) {}
 }
 
-void menu() {
+void menu(void) {
     printf("\n手动时间标签\n");
     printf("1. 添加文本(含时间标签)\n");
     printf("2. 删除文本\n");
@@ -139,10 +147,105 @@ void menu() {
     printf("5. 分页浏览文本\n");
     printf("6. 显示所有文本\n");
     printf("7. 按时间分类显示\n");
-    printf("8. 树形结构展示所有日期\n");   // 新增菜单项
+    printf("8. 树形结构展示所有日期\n");
     printf("0. 退出\n");
     printf("============================================\n");
     printf("请选择：");
+}
+
+int ExtractDateAndContent(const char *full, int *year, int *month, int *day, char *content) {
+    const char *openBracket = strchr(full, '[');
+    const char *closeBracket = strchr(full, ']');
+    if (!openBracket || !closeBracket || closeBracket <= openBracket) {
+        return 0;
+    }
+    int tagLen = closeBracket - openBracket - 1;
+    if (tagLen <= 0 || tagLen >= MAX_STR_LEN) return 0;
+
+    char tag[MAX_STR_LEN];
+    int i;
+    for (i = 0; i < tagLen; i++) {
+        tag[i] = openBracket[1 + i];
+    }
+    tag[i] = '\0';
+
+    if (sscanf(tag, "%d-%d-%d", year, month, day) != 3) {
+        return 0;
+    }
+    const char *contentStart = closeBracket + 1;
+    if (*contentStart == ' ') contentStart++;
+    MyStrCpy(content, contentStart);
+    return 1;
+}
+
+void showTreeByDate(StrStack *s) {
+    if (IsEmpty(s)) {
+        printf("暂无文本！\n");
+        return;
+    }
+    int size = GetSize(s);
+    DateItem items[MAX_STACK_SIZE];
+    int itemCount = 0;
+
+    for (int i = 0; i < size; i++) {
+        int y, m, d;
+        char content[MAX_STR_LEN];
+        if (ExtractDateAndContent(s->data[i], &y, &m, &d, content)) {
+            items[itemCount].year = y;
+            items[itemCount].month = m;
+            items[itemCount].day = d;
+            MyStrCpy(items[itemCount].contentOnly, content);
+            itemCount++;
+        }
+    }
+
+    if (itemCount == 0) {
+        printf("没有找到有效的日期格式文本！\n");
+        return;
+    }
+
+    for (int i = 0; i < itemCount - 1; i++) {
+        for (int j = 0; j < itemCount - 1 - i; j++) {
+            if (items[j].year > items[j+1].year ||
+                (items[j].year == items[j+1].year && items[j].month > items[j+1].month) ||
+                (items[j].year == items[j+1].year && items[j].month == items[j+1].month && items[j].day > items[j+1].day)) {
+                DateItem temp = items[j];
+                items[j] = items[j+1];
+                items[j+1] = temp;
+            }
+        }
+    }
+
+    int idx = 0;
+    int prev_year = -1, prev_month = -1, prev_day = -1;
+    while (idx < itemCount) {
+        int cur_year = items[idx].year;
+        int cur_month = items[idx].month;
+        int cur_day = items[idx].day;
+
+        if (cur_year != prev_year) {
+            printf("%d\n", cur_year);
+            prev_month = -1;
+            prev_day = -1;
+        }
+        if (cur_year != prev_year || cur_month != prev_month) {
+            printf("  |-- %02d\n", cur_month);
+            prev_day = -1;
+        }
+        if (cur_year != prev_year || cur_month != prev_month || cur_day != prev_day) {
+            printf("      |-- %02d\n", cur_day);
+        }
+        while (idx < itemCount &&
+               items[idx].year == cur_year &&
+               items[idx].month == cur_month &&
+               items[idx].day == cur_day) {
+            printf("          |-- %s\n", items[idx].contentOnly);
+            idx++;
+        }
+        prev_year = cur_year;
+        prev_month = cur_month;
+        prev_day = cur_day;
+    }
 }
 
 void addText(StrStack *s) {
@@ -191,6 +294,7 @@ void addText(StrStack *s) {
     Push(s, full);
     printf("添加成功！\n");
 }
+
 void deleteText(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本可删除！\n");
@@ -225,6 +329,7 @@ void deleteText(StrStack *s) {
     }
     printf("删除成功！\n");
 }
+
 void modifyText(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本可修改！\n");
@@ -269,6 +374,7 @@ void modifyText(StrStack *s) {
     MyStrCat(s->data[idx], newContent);
     printf("修改成功！\n");
 }
+
 void searchText(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本可查找！\n");
@@ -290,6 +396,7 @@ void searchText(StrStack *s) {
     }
     if (!find) printf("未找到匹配文本！\n");
 }
+
 void browseText(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本！\n");
@@ -319,6 +426,7 @@ void browseText(StrStack *s) {
         else printf("无法操作！\n");
     }
 }
+
 void showAll(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本！\n");
@@ -330,6 +438,7 @@ void showAll(StrStack *s) {
         printf("%d. %s\n", i + 1, s->data[i]);
     }
 }
+
 void showByTime(StrStack *s) {
     if (IsEmpty(s)) {
         printf("暂无文本！\n");
@@ -341,109 +450,7 @@ void showByTime(StrStack *s) {
     browseText(&sorted);
 }
 
-// ------------------- 新增：树形结构展示所有日期 -------------------
-typedef struct {
-    int year, month, day;
-    char content[MAX_STR_LEN];
-} DateRecord;
-
-// 解析标签中的年月日，成功返回1，否则0
-static int ParseDateFromTag(const char *tagPrefix, int *year, int *month, int *day) {
-    // tagPrefix 格式为 "[2026-05-22] " 或类似
-    return sscanf(tagPrefix, "[%d-%d-%d]", year, month, day) == 3;
-}
-
-void showDateTree(StrStack *s) {
-    if (IsEmpty(s)) {
-        printf("暂无文本，无法展示日期树！\n");
-        return;
-    }
-
-    DateRecord records[MAX_STACK_SIZE];
-    int recCount = 0;
-
-    // 遍历栈中所有文本，提取日期和纯文本内容
-    for (int i = 0; i <= s->top; i++) {
-        char full[MAX_STR_LEN];
-        MyStrCpy(full, s->data[i]);
-
-        char tagPrefix[MAX_STR_LEN];
-        GetTagPrefix(full, tagPrefix);
-
-        int y, m, d;
-        if (ParseDateFromTag(tagPrefix, &y, &m, &d)) {
-            // 定位内容起始位置：跳过 tagPrefix 的长度
-            char *contentStart = full + MyStrLen(tagPrefix);
-            records[recCount].year = y;
-            records[recCount].month = m;
-            records[recCount].day = d;
-            MyStrCpy(records[recCount].content, contentStart);
-            recCount++;
-        } else {
-            // 日期格式无效，忽略这条记录（不中断程序）
-            // printf("警告：无法解析时间标签：%s\n", full);
-        }
-    }
-
-    if (recCount == 0) {
-        printf("没有找到任何有效的日期数据，无法展示日期树。\n");
-        return;
-    }
-
-    // 冒泡排序：按年、月、日升序
-    for (int i = 0; i < recCount - 1; i++) {
-        for (int j = 0; j < recCount - 1 - i; j++) {
-            int y1 = records[j].year, y2 = records[j+1].year;
-            int m1 = records[j].month, m2 = records[j+1].month;
-            int d1 = records[j].day, d2 = records[j+1].day;
-            if (y1 > y2 ||
-               (y1 == y2 && m1 > m2) ||
-               (y1 == y2 && m1 == m2 && d1 > d2)) {
-                DateRecord tmp = records[j];
-                records[j] = records[j+1];
-                records[j+1] = tmp;
-            }
-        }
-    }
-
-    // 树形打印
-    int lastYear = -1, lastMonth = -1;
-    printf("\n========== 日期树形结构 ==========\n");
-    for (int i = 0; i < recCount; ) {
-        int year = records[i].year;
-        int month = records[i].month;
-        int day = records[i].day;
-
-        // 打印年份节点
-        if (year != lastYear) {
-            if (lastYear != -1) putchar('\n');
-            printf("%d\n", year);
-            lastYear = year;
-            lastMonth = -1;   // 年份切换后强制重打月份
-        }
-
-        // 打印月份节点
-        if (month != lastMonth) {
-            printf("  %02d\n", month);
-            lastMonth = month;
-        }
-
-        // 打印日期节点（当天可能有若干条文本）
-        printf("    %02d\n", day);
-        // 输出该日期的所有文本
-        while (i < recCount &&
-               records[i].year == year &&
-               records[i].month == month &&
-               records[i].day == day) {
-            printf("      - %s\n", records[i].content);
-            i++;
-        }
-    }
-    printf("==================================\n");
-}
-// ------------------- 新增结束 -------------------
-
-int main() {
+int main(void) {
     StrStack st;
     InitStack(&st);
     int choice;
@@ -451,7 +458,7 @@ int main() {
     while (1) {
         menu();
         scanf("%d", &choice);
-        ClearInputBuffer(); 
+        ClearInputBuffer();
         switch (choice) {
             case 1: addText(&st); break;
             case 2: deleteText(&st); break;
@@ -460,7 +467,7 @@ int main() {
             case 5: browseText(&st); break;
             case 6: showAll(&st); break;
             case 7: showByTime(&st); break;
-            case 8: showDateTree(&st); break;   // 新增调用
+            case 8: showTreeByDate(&st); break;//新增功能
             case 0:
                 printf("退出系统\n");
                 return 0;
