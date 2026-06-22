@@ -37,7 +37,6 @@ typedef struct {
     int currentNode;            // 当前所在节点ID
 } MenuGraph;
 
-// ============ 原有的字符串函数 ============
 int MyStrLen(const char *s) {
     int len = 0;
     while (s[len] != '\0') len++;
@@ -114,7 +113,6 @@ void GetTagPrefix(const char *src, char *prefix) {
     prefix[i] = '\0';
 }
 
-// ============ 栈操作 ============
 void InitStack(StrStack *s) { s->top = -1; }
 int IsFull(StrStack *s)  { return s->top == MAX_STACK_SIZE - 1; }
 int IsEmpty(StrStack *s) { return s->top == -1; }
@@ -162,7 +160,6 @@ void ClearInputBuffer(void) {
     while ((c = getchar()) != '\n' && c != EOF) {}
 }
 
-// ============ 日期提取 ============
 int ExtractDateAndContent(const char *full, int *year, int *month, int *day, char *content) {
     const char *openBracket = strchr(full, '[');
     const char *closeBracket = strchr(full, ']');
@@ -188,7 +185,6 @@ int ExtractDateAndContent(const char *full, int *year, int *month, int *day, cha
     return 1;
 }
 
-// ============ 原有的功能函数 ============
 void addText(StrStack *s) {
     if (IsFull(s)) {
         printf("文本栈已满，无法添加！\n");
