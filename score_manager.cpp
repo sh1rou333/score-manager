@@ -5,7 +5,9 @@
 #define MAX_STACK_SIZE 100
 #define MAX_STR_LEN    256
 #define PAGE_SIZE      5
+#define MAX_NODES      50
 
+// ============ 原有的结构定义 ============
 typedef struct {
     char data[MAX_STACK_SIZE][MAX_STR_LEN];
     int top;
@@ -18,6 +20,24 @@ typedef struct {
     char contentOnly[MAX_STR_LEN];
 } DateItem;
 
+// ============ 图结构定义（用于菜单导航） ============
+typedef struct MenuNode {
+    int id;                     // 节点ID
+    char name[50];              // 菜单名称
+    char description[100];      // 功能描述
+    int parentId;               // 父节点ID（-1表示根节点）
+    int childCount;             // 子节点数量
+    int children[MAX_NODES];    // 子节点ID列表
+    void (*action)(StrStack*);  // 功能函数指针
+} MenuNode;
+
+typedef struct {
+    MenuNode nodes[MAX_NODES];
+    int nodeCount;
+    int currentNode;            // 当前所在节点ID
+} MenuGraph;
+
+// ============ 原有的字符串函数 ============
 int MyStrLen(const char *s) {
     int len = 0;
     while (s[len] != '\0') len++;
@@ -94,6 +114,7 @@ void GetTagPrefix(const char *src, char *prefix) {
     prefix[i] = '\0';
 }
 
+// ============ 栈操作 ============
 void InitStack(StrStack *s) { s->top = -1; }
 int IsFull(StrStack *s)  { return s->top == MAX_STACK_SIZE - 1; }
 int IsEmpty(StrStack *s) { return s->top == -1; }
@@ -103,7 +124,6 @@ int Push(StrStack *s, const char *str) {
     MyStrCpy(s->data[s->top], str);
     return 1;
 }
-
 int Pop(StrStack *s, char *str) {
     if (IsEmpty(s)) return 0;
     MyStrCpy(str, s->data[s->top]);
@@ -111,13 +131,16 @@ int Pop(StrStack *s, char *str) {
     return 1;
 }
 int GetSize(StrStack *s) { return s->top + 1; }
+
 void CopyStack(StrStack *dest, StrStack *src) {
+    if (dest == src) return;
     InitStack(dest);
     for (int i = 0; i <= src->top; i++) {
         MyStrCpy(dest->data[i], src->data[i]);
     }
     dest->top = src->top;
 }
+
 void SortStackByTag(StrStack *s) {
     int size = GetSize(s);
     char tag1[MAX_STR_LEN], tag2[MAX_STR_LEN], temp[MAX_STR_LEN];
@@ -133,26 +156,13 @@ void SortStackByTag(StrStack *s) {
         }
     }
 }
+
 void ClearInputBuffer(void) {
     int c;
     while ((c = getchar()) != '\n' && c != EOF) {}
 }
 
-void menu(void) {
-    printf("\n手动时间标签\n");
-    printf("1. 添加文本(含时间标签)\n");
-    printf("2. 删除文本\n");
-    printf("3. 修改文本\n");
-    printf("4. 查找文本\n");
-    printf("5. 分页浏览文本\n");
-    printf("6. 显示所有文本\n");
-    printf("7. 按时间分类显示\n");
-    printf("8. 树形结构展示所有日期\n");
-    printf("0. 退出\n");
-    printf("============================================\n");
-    printf("请选择：");
-}
-
+// ============ 日期提取 ============
 int ExtractDateAndContent(const char *full, int *year, int *month, int *day, char *content) {
     const char *openBracket = strchr(full, '[');
     const char *closeBracket = strchr(full, ']');
@@ -178,76 +188,7 @@ int ExtractDateAndContent(const char *full, int *year, int *month, int *day, cha
     return 1;
 }
 
-void showTreeByDate(StrStack *s) {
-    if (IsEmpty(s)) {
-        printf("暂无文本！\n");
-        return;
-    }
-    int size = GetSize(s);
-    DateItem items[MAX_STACK_SIZE];
-    int itemCount = 0;
-
-    for (int i = 0; i < size; i++) {
-        int y, m, d;
-        char content[MAX_STR_LEN];
-        if (ExtractDateAndContent(s->data[i], &y, &m, &d, content)) {
-            items[itemCount].year = y;
-            items[itemCount].month = m;
-            items[itemCount].day = d;
-            MyStrCpy(items[itemCount].contentOnly, content);
-            itemCount++;
-        }
-    }
-
-    if (itemCount == 0) {
-        printf("没有找到有效的日期格式文本！\n");
-        return;
-    }
-
-    for (int i = 0; i < itemCount - 1; i++) {
-        for (int j = 0; j < itemCount - 1 - i; j++) {
-            if (items[j].year > items[j+1].year ||
-                (items[j].year == items[j+1].year && items[j].month > items[j+1].month) ||
-                (items[j].year == items[j+1].year && items[j].month == items[j+1].month && items[j].day > items[j+1].day)) {
-                DateItem temp = items[j];
-                items[j] = items[j+1];
-                items[j+1] = temp;
-            }
-        }
-    }
-
-    int idx = 0;
-    int prev_year = -1, prev_month = -1, prev_day = -1;
-    while (idx < itemCount) {
-        int cur_year = items[idx].year;
-        int cur_month = items[idx].month;
-        int cur_day = items[idx].day;
-
-        if (cur_year != prev_year) {
-            printf("%d\n", cur_year);
-            prev_month = -1;
-            prev_day = -1;
-        }
-        if (cur_year != prev_year || cur_month != prev_month) {
-            printf("  |-- %02d\n", cur_month);
-            prev_day = -1;
-        }
-        if (cur_year != prev_year || cur_month != prev_month || cur_day != prev_day) {
-            printf("      |-- %02d\n", cur_day);
-        }
-        while (idx < itemCount &&
-               items[idx].year == cur_year &&
-               items[idx].month == cur_month &&
-               items[idx].day == cur_day) {
-            printf("          |-- %s\n", items[idx].contentOnly);
-            idx++;
-        }
-        prev_year = cur_year;
-        prev_month = cur_month;
-        prev_day = cur_day;
-    }
-}
-
+// ============ 原有的功能函数 ============
 void addText(StrStack *s) {
     if (IsFull(s)) {
         printf("文本栈已满，无法添加！\n");
@@ -450,30 +391,219 @@ void showByTime(StrStack *s) {
     browseText(&sorted);
 }
 
-int main(void) {
-    StrStack st;
-    InitStack(&st);
-    int choice;
+void showTreeByDate(StrStack *s) {
+    if (IsEmpty(s)) {
+        printf("暂无文本！\n");
+        return;
+    }
+    int size = GetSize(s);
+    DateItem items[MAX_STACK_SIZE];
+    int itemCount = 0;
 
-    while (1) {
-        menu();
-        scanf("%d", &choice);
-        ClearInputBuffer();
-        switch (choice) {
-            case 1: addText(&st); break;
-            case 2: deleteText(&st); break;
-            case 3: modifyText(&st); break;
-            case 4: searchText(&st); break;
-            case 5: browseText(&st); break;
-            case 6: showAll(&st); break;
-            case 7: showByTime(&st); break;
-            case 8: showTreeByDate(&st); break;
-            case 0:
-                printf("退出系统\n");
-                return 0;
-            default:
-                printf("输入错误，请重新选择！\n");
+    for (int i = 0; i < size; i++) {
+        int y, m, d;
+        char content[MAX_STR_LEN];
+        if (ExtractDateAndContent(s->data[i], &y, &m, &d, content)) {
+            items[itemCount].year = y;
+            items[itemCount].month = m;
+            items[itemCount].day = d;
+            MyStrCpy(items[itemCount].contentOnly, content);
+            itemCount++;
         }
     }
-    return 0;
+
+    if (itemCount == 0) {
+        printf("没有找到有效的日期格式文本！\n");
+        return;
+    }
+
+    for (int i = 0; i < itemCount - 1; i++) {
+        for (int j = 0; j < itemCount - 1 - i; j++) {
+            if (items[j].year > items[j+1].year ||
+                (items[j].year == items[j+1].year && items[j].month > items[j+1].month) ||
+                (items[j].year == items[j+1].year && items[j].month == items[j+1].month && items[j].day > items[j+1].day)) {
+                DateItem temp = items[j];
+                items[j] = items[j+1];
+                items[j+1] = temp;
+            }
+        }
+    }
+
+    int idx = 0;
+    int prev_year = -1, prev_month = -1, prev_day = -1;
+    while (idx < itemCount) {
+        int cur_year = items[idx].year;
+        int cur_month = items[idx].month;
+        int cur_day = items[idx].day;
+
+        if (cur_year != prev_year) {
+            printf("%d\n", cur_year);
+            prev_month = -1;
+            prev_day = -1;
+        }
+        if (cur_year != prev_year || cur_month != prev_month) {
+            printf("  |-- %02d\n", cur_month);
+            prev_day = -1;
+        }
+        if (cur_year != prev_year || cur_month != prev_month || cur_day != prev_day) {
+            printf("      |-- %02d\n", cur_day);
+        }
+        while (idx < itemCount &&
+               items[idx].year == cur_year &&
+               items[idx].month == cur_month &&
+               items[idx].day == cur_day) {
+            printf("          |-- %s\n", items[idx].contentOnly);
+            idx++;
+        }
+        prev_year = cur_year;
+        prev_month = cur_month;
+        prev_day = cur_day;
+    }
 }
+void InitMenuGraph(MenuGraph *mg) {
+    mg->nodeCount = 0;
+    mg->currentNode = -1;
+}
+
+int AddMenuNode(MenuGraph *mg, const char *name, const char *desc, int parentId, void (*action)(StrStack*)) {
+    if (mg->nodeCount >= MAX_NODES) {
+        printf("菜单节点已满！\n");
+        return -1;
+    }
+    
+    int id = mg->nodeCount;
+    mg->nodes[id].id = id;
+    MyStrCpy(mg->nodes[id].name, name);
+    MyStrCpy(mg->nodes[id].description, desc);
+    mg->nodes[id].parentId = parentId;
+    mg->nodes[id].childCount = 0;
+    mg->nodes[id].action = action;
+    
+    if (parentId >= 0) {
+        if (mg->nodes[parentId].childCount < MAX_NODES) {
+            mg->nodes[parentId].children[mg->nodes[parentId].childCount++] = id;
+        }
+    }
+    
+    mg->nodeCount++;
+    return id;
+}
+
+int FindMenuNode(MenuGraph *mg, const char *name) {
+    for (int i = 0; i < mg->nodeCount; i++) {
+        if (MyStrCmp(mg->nodes[i].name, name) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void ShowCurrentMenu(MenuGraph *mg) {
+    if (mg->currentNode < 0) {
+        printf("错误：未进入菜单系统！\n");
+        return;
+    }
+    
+    MenuNode *current = &mg->nodes[mg->currentNode];
+    printf("\n========================================\n");
+    printf("📋 %s\n", current->name);
+    printf("   %s\n", current->description);
+    printf("========================================\n");
+    
+    if (current->childCount == 0) {
+        printf("   [执行功能]\n");
+    } else {
+        for (int i = 0; i < current->childCount; i++) {
+            int childId = current->children[i];
+            printf("   %d. %s\n", i + 1, mg->nodes[childId].name);
+        }
+    }
+    
+    if (current->parentId >= 0) {
+        printf("   0. 返回上一级\n");
+    }
+    printf("========================================\n");
+    printf("请选择：");
+}
+
+// 执行菜单导航
+void NavigateMenu(MenuGraph *mg, StrStack *s) {
+    int choice;
+    char input[10];
+    
+    while (1) {
+        if (mg->currentNode < 0) {
+            printf("请先进入菜单系统！\n");
+            return;
+        }
+        
+        ShowCurrentMenu(mg);
+        fgets(input, sizeof(input), stdin);
+        TrimNewLine(input);
+
+        if (MyStrCmp(input, "0") == 0) {
+            if (mg->nodes[mg->currentNode].parentId >= 0) {
+                mg->currentNode = mg->nodes[mg->currentNode].parentId;
+                continue;
+            }
+        }
+        
+        // 尝试解析为数字
+        choice = atoi(input);
+        if (choice == 0 && MyStrCmp(input, "0") != 0) {
+            printf("输入无效，请重新选择！\n");
+            continue;
+        }
+        
+        MenuNode *current = &mg->nodes[mg->currentNode];
+        
+        if (current->childCount == 0) {
+            if (choice == 1) {
+                if (current->action != NULL) {
+                    current->action(s);
+                } else {
+                    printf("功能未实现！\n");
+                }
+                if (current->parentId >= 0) {
+                    mg->currentNode = current->parentId;
+                }
+            } else {
+                printf("无效选择！\n");
+            }
+        } else {
+            if (choice >= 1 && choice <= current->childCount) {
+                int childId = current->children[choice - 1];
+                mg->currentNode = childId;
+            } else {
+                printf("无效选择！\n");
+            }
+        }
+    }
+}
+
+void BuildMenuGraph(MenuGraph *mg) {
+    InitMenuGraph(mg);
+    
+    // 创建根节点
+    int rootId = AddMenuNode(mg, "📚 文本管理系统", "主菜单", -1, NULL);
+    mg->currentNode = rootId;
+    
+    // 一级菜单：文本管理
+    int textManageId = AddMenuNode(mg, "📝 文本管理", "管理所有文本内容", rootId, NULL);
+    
+    // 二级菜单：文本管理下的功能
+    AddMenuNode(mg, "➕ 添加文本", "添加新的时间标签文本", textManageId, addText);
+    AddMenuNode(mg, "➖ 删除文本", "删除指定的文本", textManageId, deleteText);
+    AddMenuNode(mg, "✏️ 修改文本", "修改文本内容", textManageId, modifyText);
+    AddMenuNode(mg, "🔍 查找文本", "搜索关键词", textManageId, searchText);
+    
+   
+    int browseId = AddMenuNode(mg, "👁️ 浏览功能", "查看和浏览文本", rootId, NULL);
+    
+    AddMenuNode(mg, "📄 分页浏览", "分页查看所有文本", browseId, browseText);
+    AddMenuNode(mg, "📋 全部显示", "显示所有文本", browseId, showAll);
+    AddMenuNode(mg, "🕐 按时间排序", "按时间标签排序浏览", browseId, showByTime);
+    AddMenuNode(mg, "🌳 树形展示", "按日期树形结构展示", browseId, showTreeByDate);
+}
+
+
