@@ -605,5 +605,19 @@ void BuildMenuGraph(MenuGraph *mg) {
     AddMenuNode(mg, "🕐 按时间排序", "按时间标签排序浏览", browseId, showByTime);
     AddMenuNode(mg, "🌳 树形展示", "按日期树形结构展示", browseId, showTreeByDate);
 }
-
+int main(void) {
+    StrStack st;
+    InitStack(&st);
+    
+    MenuGraph menuGraph;
+    BuildMenuGraph(&menuGraph);
+    
+    printf("\n🎯 基于图结构的菜单导航系统\n");
+    printf("提示：菜单采用树形结构，选择数字进入子菜单或执行功能\n");
+    printf("      0 返回上一级\n\n");
+    
+    NavigateMenu(&menuGraph, &st);
+    
+    return 0;
+}
 
